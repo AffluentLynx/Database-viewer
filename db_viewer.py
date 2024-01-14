@@ -1,15 +1,16 @@
 #['Datetime', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'], data=[], style=Pack(height=400))
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog
 from tkinter import messagebox  # Import for displaying a confirmation dialog
 import sqlite3
 
-Database_file = 'PLOTpyStockData.db'
 
 class SQLiteViewer(tk.Tk):
-    def __init__(self):
+    def __init__(self, database_filename):
         super().__init__()
-        self.title(f'SQLite Viewer - {Database_file}')
+        self.database_filename = database_filename
+        self.title(f'SQLite Viewer - {self.database_filename}')
         self.geometry("700x300")  # Set the initial window size
     
         # Dropdown for table selection
@@ -124,7 +125,7 @@ class SQLiteViewer(tk.Tk):
                 f'Are you sure you want to delete the table "{selected_table}"? This action cannot be undone.'
             )
             if confirmation:
-                connection = sqlite3.connect(Database_file)
+                connection = sqlite3.connect(self.database_filename)
                 cursor = connection.cursor()
                 cursor.execute(f"DROP TABLE IF EXISTS {selected_table}")
                 connection.commit()
@@ -134,7 +135,7 @@ class SQLiteViewer(tk.Tk):
                 messagebox.showinfo('Table Deleted', f'Table "{selected_table}" has been deleted.')
 
     def get_table_names(self):
-        connection = sqlite3.connect(Database_file)
+        connection = sqlite3.connect(self.database_filename)
         cursor = connection.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         tables = cursor.fetchall()
@@ -144,7 +145,7 @@ class SQLiteViewer(tk.Tk):
     def on_table_select(self, event):
         selected_table = self.table_list.get()
         if selected_table:
-            connection = sqlite3.connect(Database_file)
+            connection = sqlite3.connect(self.database_filename)
             cursor = connection.cursor()
             cursor.execute(f"PRAGMA table_info({selected_table});")  # Get column names and details
             columns_info = cursor.fetchall()
@@ -232,7 +233,7 @@ class SQLiteViewer(tk.Tk):
                     )
     
                     if confirmation:
-                        connection = sqlite3.connect(Database_file)
+                        connection = sqlite3.connect(self.database_filename)
                         cursor = connection.cursor()
                         for index in selected_indices:
                             cursor.execute(f"DELETE FROM {selected_table} WHERE rowid=?", (index,))
@@ -255,7 +256,38 @@ class SQLiteViewer(tk.Tk):
         range_text = self.index_entry.get()
         self.highlight_rows_by_range(range_text)
 
+
+class DatabaseSelector(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title('Select Database')
+        self.geometry("300x100")  # Set the initial window size
+        
+        # Create a label to instruct the user
+        label = tk.Label(self, text="Please select a database file:")
+        label.pack(pady=10)
+        
+        # Create a button to open a file dialog
+        select_button = ttk.Button(self, text="Select Database", command=self.select_database)
+        select_button.pack()
+        
+        # Initialize the database filename
+        self.database_filename = None
+
+    def select_database(self):
+        # Open a file dialog to select a database file
+        file_path = filedialog.askopenfilename(filetypes=[("Database files", "*.db")])
+
+        if file_path:
+            self.database_filename = file_path
+            self.destroy()  # Close the database selection window
+            self.open_main_application()
+
+    def open_main_application(self):
+        # After selecting a database, open the main application window
+        app = SQLiteViewer(self.database_filename)
+        app.mainloop()
     
 if __name__ == '__main__':
-    app = SQLiteViewer()
-    app.mainloop()
+    db_selector = DatabaseSelector()
+    db_selector.mainloop()
